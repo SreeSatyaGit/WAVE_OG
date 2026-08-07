@@ -231,3 +231,23 @@ def test_create_run_ignores_forged_extra_fields(client):
     assert payload["status"] == "pending"
     assert payload["result_summary"] is None
     assert payload["completed_at"] is None
+    
+def test_update_run_rejects_unknown_status(client):
+    client.post(
+        "/api/v1/runs",
+        json={
+            "name": "Run E",
+            "protocol": "LC-MS v2",
+            "sample_ids": ["S030"],
+        },
+    )
+
+    response = client.patch("/api/v1/runs/1", json={"status": "bogus"})
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_update_run_missing_run_returns_404(client):
+    response = client.patch("/api/v1/runs/9999", json={"status": "running"})
+    assert response.status_code == 404
+    assert "error" in response.get_json()
