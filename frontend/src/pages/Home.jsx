@@ -11,15 +11,26 @@ function Home() {
   const [stats, setStats] = useState(null);
   const [selectedStatus, setSelectedStatus] = useState("");
   const [error, setError] = useState(null);
+  const [sampleIdSearch, setSampleIdSearch] = useState("");
 
+  const visibleRuns = sampleIdSearch.trim()
+    ? runs.filter((run) =>
+      run.sample_ids.some((sampleId) =>
+        sampleId.toLowerCase().includes(sampleIdSearch.trim().toLowerCase())
+      )
+    )
+    : runs;
   useEffect(() => {
-    fetchRuns(selectedStatus).then((data) => setRuns(data));
+    fetchRuns(selectedStatus)
+      .then((data) => setRuns(data))
+      .catch((err) => setError(describeFieldErrors(err)));
   }, [selectedStatus]);
 
   useEffect(() => {
-    fetchStats().then((data) => setStats(data));
+    fetchStats()
+      .then((data) => setStats(data))
+      .catch((err) => setError(describeFieldErrors(err)));
   }, []);
-
   function handleCreate(payload) {
     createRun(payload)
       .then((createdRun) => {
@@ -67,10 +78,19 @@ function Home() {
           <option value="completed">Completed</option>
           <option value="failed">Failed</option>
         </select>
+        <label htmlFor="sample-id-search" style={{ marginLeft: "16px" }}>
+          Search sample ID:{" "}
+        </label>
+        <input
+          id="sample-id-search"
+          placeholder="e.g. S001"
+          value={sampleIdSearch}
+          onChange={(event) => setSampleIdSearch(event.target.value)}
+        />
       </div>
 
       <RunForm onCreate={handleCreate} onOpen={() => setError(null)} />
-      <RunTable runs={runs} onStatusChange={handleStatusChange} />
+      <RunTable runs={visibleRuns} onStatusChange={handleStatusChange} />
     </div>
   );
 }
