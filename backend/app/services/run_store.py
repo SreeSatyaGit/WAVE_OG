@@ -3,6 +3,12 @@ from datetime import datetime, timezone
 RUNS = []
 _counter = 0
 VALID_STATUSES = ["pending", "running", "completed", "failed"]
+VALID_TRANSITIONS = {
+    "pending": {"running"},
+    "running": {"completed", "failed"},
+    "completed": set(),
+    "failed": set(),
+}
 
 
 def _now_isoformat():
@@ -56,7 +62,7 @@ def create_run(payload):
 
 def update_run(run, status, result_summary=None):
     run["status"] = status
-    if result_summary:
+    if result_summary is not None:
         run["result_summary"] = result_summary
     if status in ["completed", "failed"]:
         run["completed_at"] = _now_isoformat()

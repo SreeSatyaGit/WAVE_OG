@@ -1,10 +1,18 @@
 import { useState } from "react";
 
-function RunForm({ onCreate }) {
+function RunForm({ onCreate, onOpen }) {
   const [name, setName] = useState("");
   const [protocol, setProtocol] = useState("");
   const [sampleIds, setSampleIds] = useState("");
   const [isOpen, setIsOpen] = useState(false);
+
+  function handleToggle() {
+    const nextIsOpen = !isOpen;
+    setIsOpen(nextIsOpen);
+    if (nextIsOpen) {
+      onOpen?.();
+    }
+  }
 
   function handleSubmit() {
     onCreate({
@@ -15,9 +23,10 @@ function RunForm({ onCreate }) {
     setIsOpen(false);
   }
 
+
   return (
     <div style={{ marginBottom: "16px" }}>
-      <button onClick={() => setIsOpen(!isOpen)}>+ New Run</button>
+      <button onClick={handleToggle}>+ New Run</button>
       {isOpen && (
         <div style={{ marginTop: "12px", border: "1px solid #ccc", padding: "12px" }}>
           <div>

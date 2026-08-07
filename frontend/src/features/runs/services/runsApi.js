@@ -19,12 +19,12 @@ function createRun(payload) {
   });
 }
 
-async function updateRun(runId, status) {
-  const response = await fetch(`${API_BASE_URL}/runs/${runId}?status=${status}`, {
+function updateRun(runId, status, resultSummary) {
+  return fetchJson(`${API_BASE_URL}/runs/${runId}`, {
     method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status, result_summary: resultSummary }),
   });
-
-  return response.json();
 }
 
 export { createRun, fetchRuns, fetchStats, updateRun };
