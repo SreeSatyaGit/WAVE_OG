@@ -19,8 +19,17 @@ function RunForm({ onCreate, onOpen }) {
       name,
       protocol,
       sample_ids: sampleIds.split(",").map((sampleId) => sampleId.trim()),
-    });
-    setIsOpen(false);
+    })
+      .then(() => {
+        setName("");
+        setProtocol("");
+        setSampleIds("");
+        setIsOpen(false);
+      })
+      .catch(() => {
+        // Stay open with what the user typed so they can fix it and
+        // resubmit — Home.jsx already surfaces the error banner.
+      });
   }
 
 

@@ -20,4 +20,4 @@ async function fetchJson(resource, options = {}) {
   return payload;
 }
 
-export { fetchJson };
+export { fetchJson, DEFAULT_TIMEOUT_MS };

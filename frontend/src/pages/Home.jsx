@@ -32,14 +32,17 @@ function Home() {
       .catch((err) => setError(describeFieldErrors(err)));
   }, []);
   function handleCreate(payload) {
-    createRun(payload)
+    return createRun(payload)
       .then((createdRun) => {
         setRuns([...runs, createdRun]);
         setError(null);
         return fetchStats();
       })
       .then((data) => setStats(data))
-      .catch((err) => setError(describeFieldErrors(err)));
+      .catch((err) => {
+        setError(describeFieldErrors(err));
+        throw err;
+      });
   }
 
   function handleStatusChange(runId, status, resultSummary) {
