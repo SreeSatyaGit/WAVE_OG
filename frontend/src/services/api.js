@@ -20,4 +20,4 @@ async function fetchJson(resource, options = {}) {
   return payload;
 }
 
-export { fetchJson, DEFAULT_TIMEOUT_MS };
+export { fetchJson, DEFAULT_TIMEOUT_MS }; // Export the timeout constant so tests reference it instead of hardcoding 15000

@@ -4,7 +4,7 @@ from app.apis.runs import (
     MAX_SAMPLE_ID_LENGTH,
     MAX_SAMPLE_IDS,
 )
-
+# Caps guard against pathological payloads (e.g. a 10MB "name") reaching the store
 
 def test_create_run_returns_defaults(client):
     response = client.post(
@@ -231,7 +231,7 @@ def test_create_run_ignores_forged_extra_fields(client):
     assert payload["status"] == "pending"
     assert payload["result_summary"] is None
     assert payload["completed_at"] is None
-    
+
 def test_update_run_rejects_unknown_status(client):
     client.post(
         "/api/v1/runs",

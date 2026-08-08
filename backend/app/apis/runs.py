@@ -22,7 +22,7 @@ def get_run(run_id):
     if run:
         run_store.mark_accessed(run)
         return jsonify(run)
-    return jsonify({"error": "Run not found"}),404
+    return jsonify({"error": "Run not found"}),404     # 404 instead of 200 so callers can actually detect a missing run
 
 
 @blueprint_runs.post("/runs")
@@ -35,7 +35,7 @@ def create_run():
             "fields": {field: f"{field} is required" for field in missing_fields},
         }), 400
 
-    field_errors = {}
+    field_errors = {}  # Validate each field's shape/type, not just presence, and collect every error at once
 
     if not isinstance(body.get("name"), str) or not body["name"].strip():
         field_errors["name"] = "name must be a non-empty string"
@@ -67,16 +67,16 @@ def create_run():
 def update_run(run_id):
     body = request.get_json(silent=True) or {}
     status = request.args.get("status") or body.get("status")
-    result_summary = request.args.get("result_summary") or body.get("result_summary")
+    result_summary = request.args.get("result_summary") or body.get("result_summary") # Honor a JSON-body result_summary too — the original only ever read the query string
 
     run = run_store.get_run(run_id)
     if not run:
-        return jsonify({"error": "Run not found"}), 404
+        return jsonify({"error": "Run not found"}), 404  # 404 on PATCH against a missing run, same fix as GET above
     if status not in run_store.VALID_STATUSES:
         return jsonify({"error": "invalid status"}), 400
     if result_summary is not None and not isinstance(result_summary, str):
         return jsonify({"error": "result_summary must be a string"}), 400
-    if status not in run_store.VALID_TRANSITIONS[run["status"]]:
+    if status not in run_store.VALID_TRANSITIONS[run["status"]]:   # Enforce pending -> running -> {completed, failed}; reject everything else
         return jsonify({
             "error": "invalid status transition",
             "from": run["status"],

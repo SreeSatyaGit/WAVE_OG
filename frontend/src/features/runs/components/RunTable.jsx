@@ -2,7 +2,7 @@ import { useState } from "react";
 
 function RunTable({ runs, onStatusChange }) {
   const [pendingTransition, setPendingTransition] = useState(null); // { runId, status } | null
-  const [summaryDraft, setSummaryDraft] = useState("");
+  const [summaryDraft, setSummaryDraft] = useState("");  // Tracks which row is mid-Complete/Fail so we can prompt for an optional summary first
 
   function startTransition(runId, status) {
     setPendingTransition({ runId, status });
@@ -44,6 +44,7 @@ function RunTable({ runs, onStatusChange }) {
             <td>{run.status}</td>
             <td>{run.status === "completed" || run.status === "failed" ? run.result_summary : ""}</td>
             <td>
+              {/* // Format the raw ISO timestamp for readability instead of showing it raw */}
               {new Date(run.created_at).toLocaleString(undefined, {
                 year: "numeric",
                 month: "short",

@@ -6,7 +6,7 @@ function RunForm({ onCreate, onOpen }) {
   const [sampleIds, setSampleIds] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  function handleToggle() {
+  function handleToggle() {      // Lets the parent clear any leftover error banner when the form reopens
     const nextIsOpen = !isOpen;
     setIsOpen(nextIsOpen);
     if (nextIsOpen) {
@@ -24,7 +24,7 @@ function RunForm({ onCreate, onOpen }) {
         setName("");
         setProtocol("");
         setSampleIds("");
-        setIsOpen(false);
+        setIsOpen(false);     // Only clear + close on a successful create
       })
       .catch(() => {
         // Stay open with what the user typed so they can fix it and

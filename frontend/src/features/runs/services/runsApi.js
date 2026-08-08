@@ -20,8 +20,8 @@ function createRun(payload) {
 }
 
 function updateRun(runId, status, resultSummary) {
-  return fetchJson(`${API_BASE_URL}/runs/${runId}`, {
-    method: "PATCH",
+  return fetchJson(`${API_BASE_URL}/runs/${runId}`, { // Routed through fetchJson (throws on non-2xx) with a JSON body — the old 
+    method: "PATCH",                                  // raw fetch never checked response.ok, so failed PATCHes looked successful
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ status, result_summary: resultSummary }),
   });

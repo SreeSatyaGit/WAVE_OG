@@ -7,6 +7,6 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: "./vitest.setup.js",
-    exclude: [...configDefaults.exclude, "e2e/**"],
+    exclude: [...configDefaults.exclude, "e2e/**"], // Excludes Playwright's e2e/ specs so Vitest doesn't try to run them as its own tests
   },
 });
