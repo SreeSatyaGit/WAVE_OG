@@ -1,5 +1,16 @@
 # SOLUTION.md
 
+Quick map to where each of the README's requested items lives, in case it's useful for skimming:
+
+| README asks for | Where it is |
+|---|---|
+| Prioritized code review findings | Section 1 |
+| What changed and why | Section 1 (per finding) and Section 2 |
+| Tests added or updated | Section 3 |
+| Commands run and results | Section 3 |
+| Assumptions and tradeoffs | Section 4 |
+| What I left out and why | Section 1 ("Lower Priority / Deferred") and Section 5 |
+
 ## 1. Prioritized Code Review Findings
 
 ### Highest priority
@@ -29,6 +40,7 @@ The frontend's `updateRun` used a raw `fetch(...).then(r => r.json())` with no `
 - `CORS(app)` is wide open. Fine for a local tool on `127.0.0.1`; would need real config before touching anything else, and that's a deployment decision, not a code fix.
 - `RUNS` is a global in-memory list with a module-level counter — no persistence, not thread-safe. That's the starter's storage model, not something I was asked to replace.
 - `handleCreate`/`handleStatusChange` in `Home.jsx` close over `runs` inside `.then()` callbacks — a stale-closure risk under rapid concurrent updates. Pre-existing pattern from the starter code, untouched by this feature, not exercised by any acceptance criterion.
+- `get_stats()` computes and returns `avg_samples_per_run`, but `StatsPanel.jsx` never displays it — the field just isn't consumed anywhere on the frontend. Noticed it while reviewing the stats endpoint; deliberately left it alone rather than wiring it into the UI, since it's not connected to the `result_summary` feature or any acceptance criterion and wasn't asked for.
 
 ## 2. Feature Summary
 
@@ -36,13 +48,15 @@ Implemented `result_summary` capture on terminal transitions, enforced the `pend
 
 **Backend:** `run_store.py` gained `VALID_TRANSITIONS` and the blank-summary fix. `apis/runs.py` now enforces transitions (`409`), validates `result_summary`'s type (`400`), validates create payloads with field-level messages (`400`), and returns the right status codes instead of always `200`.
 
-**Frontend:** `RunTable.jsx` shows an inline summary input with Confirm/Cancel when moving a `running` run to `completed`/`failed`, and a new column displays it for terminal runs. `updateRun` goes through `fetchJson` and sends the summary in the JSON body. `Home.jsx` surfaces any API failure — create, update, initial load — as an error banner. Also added a small client-side sample-ID search filter (`visibleRuns` in `Home.jsx`); it's not required by the acceptance criteria, calling it out here so it doesn't read as unflagged scope creep.
+**Frontend:** `RunTable.jsx` shows an inline summary input with Confirm/Cancel when moving a `running` run to `completed`/`failed`, and a new column displays it for terminal runs. `updateRun` goes through `fetchJson` and sends the summary in the JSON body. `Home.jsx` surfaces any API failure — create, update, initial load — as an error banner. Also added a small client-side sample-ID search filter (`visibleRuns` in `Home.jsx`); this came out of my own testing — with more than a handful of runs in the table it got tedious to find the one I'd just created or was mid-transition on, so I added a quick filter to make that easier for myself. It's not required by the acceptance criteria, calling it out here so it doesn't read as unflagged scope creep. Assumption behind keeping it in: a real user working with a table of many assay runs would likely want the same thing — a way to jump straight to the run for a given sample ID rather than scanning the whole list.
 
 **API contract:** `PATCH /api/v1/runs/<id>` takes `{status, result_summary}` in the JSON body. Kept the old query-string support around for backward compatibility — JSON body wins whenever the query string doesn't supply a value. Errors are `{"error": "<message>"}` for top-level failures, or `{"error": "...", "fields": {"<field>": "<message>"}}` for per-field validation. `409` for bad transitions, `400` for shape/type problems, `404` for missing runs.
 
 **User-facing behavior:** Complete/Fail on a running run prompts for an optional summary before submitting; leaving it blank persists `""` as an intentional value, not "no summary." Any failed create/update/initial-load now shows a real error instead of nothing happening.
 
 ## 3. Tests
+
+The starter had no frontend test tooling at all — `frontend/package.json` only had `react`, `react-dom`, `@vitejs/plugin-react`, and `vite`. Added as devDependencies to actually write and run the tests below: `vitest` (test runner), `jsdom` (DOM environment for component tests), `@testing-library/react` + `@testing-library/user-event` + `@testing-library/jest-dom` (rendering and interacting with components, plus DOM-aware matchers), and `@playwright/test` (the E2E suite, real browser). Also added three npm scripts — `test`, `test:e2e`, `test:e2e:ui` — none of which existed before.
 
 **Backend** — `backend/tests/test_runs.py`, 13 tests, all passing: status-transition enforcement, blank vs. missing `result_summary`, malformed create payloads, oversized fields, forged/extra-field stripping on create, non-string `result_summary` rejection, an unrecognized status value on PATCH, and PATCH against a nonexistent run.
 
@@ -82,8 +96,10 @@ cd frontend && npm run test:e2e              → 3 passed (3.0s)
 **Tradeoffs:**
 - Kept validation and error shapes scoped to the `runs` blueprint instead of pulling in a schema library (Pydantic/Marshmallow) — reasonable at this size, wouldn't scale past a handful of endpoints.
 - Left the in-memory `RUNS` list and single `_counter` alone. Fine for an exercise, not fine for concurrent/multi-process production use.
-- Left CORS wide open and didn't touch `config.py`/`health.py` — neither blocks any acceptance criterion, and guessing at infrastructure requirements nobody specified felt worse than leaving them alone.
+- Left CORS wide open and didn't touch `config.py`/`health.py` — neither blocks any acceptance criterion, and infrastructure requirements weren't specified, so I left them as-is rather than guess.
 
 ## 5. What I'd do next
 
 Expand the E2E suite to cover the stats panel updating correctly as runs move through the lifecycle, and get it running in more than one browser engine. It's small, doesn't need any product input, and it's the same "close what's already flagged before reaching for new scope" approach I tried to stick to throughout — see Section 1.
+
+**Fix stale state across tabs producing confusing 409s.** `Home.jsx` only fetches the run list on mount and when the status filter changes — no polling, no refetch-on-focus, no websocket. If User A starts a run in one tab, User B's tab has no way to find out. User B's table still shows that run as `pending` with a "Start" button, because their local state is stale, not because the server actually thinks it's still `pending`. Clicking it sends `PATCH .../runs/<id>` with `status: "running"`, but the run is already `running` server-side, so `VALID_TRANSITIONS["running"]` (`{completed, failed}`) rejects the redundant `running -> running` request: `409 {"error": "invalid status transition", "from": "running", "to": "running"}`. I reproduced this directly against the API to confirm. The backend is doing exactly the right thing here — the actual bug is that User B never had a chance to know the real state before acting on it, and the generic error message doesn't help either, since from their side they just clicked an ordinary-looking button. The cheapest fix that fits this app's scope is refetching the run list on window focus, or specifically after any `409` (since that response is itself the signal that the client's view is stale) — polling or a websocket would solve it too, but that's a bigger lift than this exercise needs.
